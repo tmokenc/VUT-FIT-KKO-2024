@@ -37,7 +37,7 @@ TEST image_blocks() {
     PASS();
 }
 
-TEST image_transposition() {
+TEST image_serialization_vertical() {
     uint8_t *tmp = image_serialization(&IMAGE, Serialization_Vertical);
 
     ASSERT_NEQ(memcmp(tmp, IMAGE.data, image_size(&IMAGE)), 0);
@@ -51,10 +51,25 @@ TEST image_transposition() {
     PASS();
 }
 
+TEST image_serialization_circular() {
+    uint8_t *tmp = image_serialization(&IMAGE, Serialization_Circular);
+
+    ASSERT_NEQ(memcmp(tmp, IMAGE.data, image_size(&IMAGE)), 0);
+
+    Image revert = image_deserialization(tmp, IMAGE.width, IMAGE.height, Serialization_Circular);
+
+    ASSERT_MEM_EQ(revert.data, IMAGE.data, image_size(&IMAGE));
+    
+    free(tmp);
+    image_free(&revert);
+    PASS();
+}
+
 GREATEST_SUITE(image) {
     GREATEST_SET_SETUP_CB(image_setup, NULL);
     GREATEST_SET_TEARDOWN_CB(image_tear_down, NULL);
 
     RUN_TEST(image_blocks);
-    RUN_TEST(image_transposition);
+    RUN_TEST(image_serialization_vertical);
+    RUN_TEST(image_serialization_circular);
 }

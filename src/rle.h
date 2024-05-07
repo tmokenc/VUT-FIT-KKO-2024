@@ -24,8 +24,10 @@ BitArray rle_encode(uint8_t *bytes, size_t len);
  *
  * @param bytes Pointer to the array of bytes representing the RLE-encoded data.
  * @param len The length of the RLE-encoded data array.
- * @return BitArray A BitArray object representing the decoded original data.
+ * @param output Output data, the address should be large enough to store the decoded data.
+ * @param output_len Length of the expected output data.
+ * @return The length of decoded data
  */
-BitArray rle_decode(uint8_t *bytes, size_t len);
+size_t rle_decode(uint8_t *bytes, size_t len, uint8_t *output, size_t output_len);
 
 #endif

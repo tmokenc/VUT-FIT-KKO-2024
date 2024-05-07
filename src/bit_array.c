@@ -157,7 +157,7 @@ void bit_array_concat(BitArray *arr, BitArray *other) {
     size_t len = other->len;
 
     while (len) {
-        size_t nof_bits = 64;
+        size_t nof_bits = 16;
         if (len < nof_bits) {
             nof_bits = len;
         }

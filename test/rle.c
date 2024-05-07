@@ -22,14 +22,16 @@ static void rle_teardown(void *arg) {
 
 TEST rle_correctness() {
     BitArray compressed = rle_encode(RLE_DATA, RLE_DATA_SIZE);
-    BitArray decompressed = rle_decode(compressed.data, bit_array_byte_len(&compressed));
+    uint8_t *tmp = malloc(RLE_DATA_SIZE);
+
+    size_t len = rle_decode(compressed.data, bit_array_byte_len(&compressed), tmp, RLE_DATA_SIZE);
 
     ASSERT_FALSE(got_error());
-    ASSERT_EQ(RLE_DATA_SIZE, bit_array_byte_len(&decompressed));
-    ASSERT_MEM_EQ(RLE_DATA, decompressed.data, RLE_DATA_SIZE);
+    ASSERT_EQ(RLE_DATA_SIZE, len);
+    ASSERT_MEM_EQ(RLE_DATA, tmp, RLE_DATA_SIZE);
 
     bit_array_free(&compressed);
-    bit_array_free(&decompressed);
+    free(tmp);
 
     PASS();
 }

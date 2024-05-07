@@ -9,24 +9,46 @@
 #include "transform.h"
 #include "rle.h"
 #include "huffman.h"
+#include "error.h"
 #include <stdlib.h>
+#include <string.h>
 
 typedef enum {
     CompressionType_None,
     CompressionType_Vertical,
     CompressionType_Horizontal,
-    CompressionType_Zigzag,
+    CompressionType_Circular,
 } CompressionType;
 
-void transform(uint8_t *bytes, size_t len);
-void revert_transform(uint8_t *bytes, size_t len);
-
-BitArray prehuffman_compress(uint8_t *bytes, size_t size, bool should_transform) {
-    if (should_transform) {
-        transform(bytes, size);
+void print_bytes(const char *str, uint8_t *bytes, size_t size) {
+    printf("%s: ", str);
+    for (size_t i = 0; i < size; i++) {
+        printf("%02X ", bytes[i]);
     }
 
-    return rle_encode(bytes, size);
+    printf("\n");
+}
+
+BitArray prehuffman_compress(uint8_t *bytes, size_t size, bool should_transform) {
+    BitArray tmp = bit_array_new(bytes, size);
+    if (got_error()) return tmp;
+
+    if (should_transform) {
+        transform(tmp.data, size);
+    }
+
+    return rle_encode(tmp.data, size);
+}
+
+size_t posthuffman_decompress(uint8_t *bytes, size_t size, bool should_transform, Image *output) {
+    size_t img_size = image_size(output);
+    size_t len = rle_decode(bytes, size, output->data, img_size);
+
+    if (should_transform) {
+        transform_revert(output->data, img_size);
+    }
+
+    return len;
 }
 
 void compress_block(Image *block, bool should_transform, BitArray *output, BitArray *metadata) {
@@ -35,9 +57,9 @@ void compress_block(Image *block, bool should_transform, BitArray *output, BitAr
      BitArray vertical_data = prehuffman_compress(vertical, size, should_transform);
      free(vertical);
 
-     uint8_t *zigzag = image_serialization(block, Serialization_Zigzag);
-     BitArray zigzag_data = prehuffman_compress(zigzag, size, should_transform);
-     free(zigzag);
+     uint8_t *circular = image_serialization(block, Serialization_Circular);
+     BitArray circular_data = prehuffman_compress(circular, size, should_transform);
+     free(circular);
 
      BitArray horizontal_data = prehuffman_compress(block->data, size, should_transform);
 
@@ -55,9 +77,9 @@ void compress_block(Image *block, bool should_transform, BitArray *output, BitAr
          type = CompressionType_Horizontal;
      }
 
-     if (zigzag_data.len < min_val) {
-         min_val = zigzag_data.len;
-         type = CompressionType_Zigzag;
+     if (circular_data.len < min_val) {
+         min_val = circular_data.len;
+         type = CompressionType_Circular;
      }
 
      switch (type) {
@@ -65,20 +87,20 @@ void compress_block(Image *block, bool should_transform, BitArray *output, BitAr
              res = bit_array_new(block->data, image_size(block));
              bit_array_free(&vertical_data);
              bit_array_free(&horizontal_data);
-             bit_array_free(&zigzag_data);
+             bit_array_free(&circular_data);
              break;
          case CompressionType_Horizontal:
              res = horizontal_data;
              bit_array_free(&vertical_data);
-             bit_array_free(&zigzag_data);
+             bit_array_free(&circular_data);
              break;
          case CompressionType_Vertical:
              res = vertical_data;
-             bit_array_free(&zigzag_data);
+             bit_array_free(&circular_data);
              bit_array_free(&horizontal_data);
              break;
-         case CompressionType_Zigzag:
-             res = zigzag_data;
+         case CompressionType_Circular:
+             res = circular_data;
              bit_array_free(&vertical_data);
              bit_array_free(&horizontal_data);
              break;
@@ -124,26 +146,80 @@ BitArray compressor_image_compress(Image *image, Args *args) {
     return huffman;
 }
 
-Image compressor_image_decompress(BitArray *bits, Args *args) {
-    uint16_t width  = bit_array_read_n(bits, 16);
-    uint16_t height = bit_array_read_n(bits, 16);
-
-    Image image = image_new(width, height);
-
-    if (args->image_adaptive) {
-        // TODO
-    } else {
-        // TODO
-
-        int size = image_size(&image);
-        int index = 0;
-
-        while (index < size - 1) {
-            // RLE decompress
-
-
+Image compressor_image_decompress(uint8_t *bytes, size_t len, Args *args) {
+    #define DECOMPRESS_ERROR_GUARD(func) func; \
+        if (got_error()) {\
+            bit_array_free(&bits); \
+            image_free(&image); \
+            bit_array_free(&block_metadata); \
+            return image; \
         }
+
+    BitArray bits = huffman_decompress(bytes, len);
+
+    uint16_t width  = bit_array_read_n(&bits, 16);
+    uint16_t height = bit_array_read_n(&bits, 16);
+
+    uint8_t *data = bits.data + 4;
+    size_t data_len = bit_array_byte_len(&bits) - 4;
+    Image image = image_new(width, height);
+    
+    if (args->image_adaptive) {
+        /// Reading block metadata
+        uint16_t nof_blocks = image_number_of_blocks(&image, args->block_size);
+        size_t block_metadata_size = nof_blocks * 2; // Each block has 2 bits of metadata
+        int n = block_metadata_size;
+        BitArray block_metadata = bit_array_new(NULL, 0);
+
+        while (n > 0) {
+            uint8_t byte = *data++;
+            DECOMPRESS_ERROR_GUARD();
+            DECOMPRESS_ERROR_GUARD(bit_array_push_n(&block_metadata, byte, 8));
+            n -= 8;
+        }
+
+        for (int i = 0; i < nof_blocks; i++) {
+            CompressionType type = bit_array_read_n(&block_metadata, 2);
+            DECOMPRESS_ERROR_GUARD();
+
+            Image block = image_get_block(&image, i, args->block_size);
+            size_t block_size = image_size(&block);
+            size_t len = block_size;
+
+            switch (type) {
+                case CompressionType_None:
+                    memcpy(block.data, data, block_size);
+                    break;
+                case CompressionType_Horizontal:
+                    len = posthuffman_decompress(data, data_len, args->transformace_data, &block);
+                    break;
+                case CompressionType_Vertical: {
+                    len = posthuffman_decompress(data, data_len, args->transformace_data, &block);
+                    Image tmp = image_deserialization(data, block.width, block.height, Serialization_Vertical);
+                    image_free(&block);
+                    block = tmp;
+                    break;
+                }
+                case CompressionType_Circular:
+                    len = posthuffman_decompress(data, data_len, args->transformace_data, &block);
+                    Image tmp = image_deserialization(data, block.width, block.height, Serialization_Circular);
+                    image_free(&block);
+                    block = tmp;
+                    break;
+            }
+
+            data += len;
+            data_len -= len;
+
+            image_insert_block(&image, &block, i, args->block_size);
+        }
+
+        bit_array_free(&block_metadata);
+    } else {
+        posthuffman_decompress(data, data_len, args->transformace_data, &image);
     }
+
+    bit_array_free(&bits);
 
     return image;
 }

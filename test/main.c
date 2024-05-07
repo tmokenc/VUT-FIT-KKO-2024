@@ -14,6 +14,7 @@ void fill_random(uint8_t *output, int length) {
 #include "transform.c"
 #include "rle.c"
 #include "image.c"
+#include "compressor.c"
 
 GREATEST_MAIN_DEFS();
 
@@ -25,6 +26,7 @@ int main(int argc, char **argv) {
     RUN_SUITE(_transform);
     RUN_SUITE(rle);
     RUN_SUITE(image);
+    RUN_SUITE(compressor);
 
     GREATEST_MAIN_END();
 }

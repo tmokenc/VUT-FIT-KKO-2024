@@ -73,24 +73,21 @@ BitArray rle_encode(uint8_t *bytes, size_t len) {
     return result;
 }
 
-BitArray rle_decode(uint8_t *bytes, size_t len) {
-    BitArray result = bit_array_new(NULL, 0);
-
+size_t rle_decode(uint8_t *bytes, size_t len, uint8_t *output, size_t output_len) {
+    size_t output_index = 0;
     size_t i = 0;
 
     while (i < len) {
         uint8_t metadata = bytes[i++];
         logfmt("RLE decoding with metadata %d", metadata);
-
-        for (int j = 0; j < 8 && i < len; j++) {
+for (int j = 0; j < 8 && i < len; j++) {
             uint16_t repeat = 1; // 16bit number because it can be up to 257 times
 
             if (metadata & 1) {
                 repeat = bytes[i++] + 2;
                 if (i == len) {
                     set_error(Error_IndexOutOfBound);
-                    bit_array_free(&result);
-                    return result;
+                    return i;
                 }
             }
 
@@ -100,17 +97,16 @@ BitArray rle_decode(uint8_t *bytes, size_t len) {
 
             // Pushing bytes into the result
             for (int k = 0; k < repeat; k++) {
-                bit_array_push_n(&result, byte, 8);
+                output[output_index++] = byte;
+            }
 
-                if (got_error()) {
-                    bit_array_free(&result);
-                    return result;
-                }
+            if (output_index >= output_len) {
+                return output_len;
             }
 
             metadata >>= 1;
         }
     }
 
-    return result;
+    return i;
 }

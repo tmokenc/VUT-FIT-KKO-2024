@@ -13,13 +13,8 @@
 #include "bit_array.h"
 
 typedef enum {
-    Transposition_Vertical,
-    Transposition_Zigzag,
-} Transposition;
-
-typedef enum {
     Serialization_Vertical,
-    Serialization_Zigzag,
+    Serialization_Circular,
 } Serialization;
 
 typedef struct {

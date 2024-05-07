@@ -48,8 +48,7 @@ int main(int argc, char **argv) {
         }
 
         case Mode_Decompress: {
-            BitArray buffer = bit_array_new(bytes, filesize);
-            Image image = compressor_image_decompress(&buffer, &args);
+            Image image = compressor_image_decompress(bytes, filesize, &args);
             if (got_error()) break;
 
             save_file(args.output_filename, image.data, image_size(&image));

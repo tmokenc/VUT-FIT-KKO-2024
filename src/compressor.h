@@ -13,6 +13,6 @@
 
 BitArray compressor_image_compress(Image *image, Args *args);
 
-Image compressor_image_decompress(BitArray *bits, Args *args);
+Image compressor_image_decompress(uint8_t *bytes, size_t len, Args *args);
 
 #endif
