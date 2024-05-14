@@ -1,0 +1,21 @@
+algorithm:
+  type: article
+  url:
+    value: "https://www.codeproject.com/Tips/1116385/ZigZag-Algorithm-in-a-Grid-revised-version-2-1"
+    date: 2024-05-14
+  title: "ZigZag Algorithm in a Grid (revised version, 2.1)"
+  language: en-US
+delta:
+  type: misc
+  title: Delta encoding — {Wikipedia}{,} The Free Encyclopedia
+  author: Wikipedia contributors
+  date: 2024
+  url: https://en.wikipedia.org/w/index.php?title=Delta_encoding&oldid=1212384714
+
+presentation:
+  type: misc
+  author: Zdeněk Vašíček
+  url:
+    value: https://moodle.vut.cz/pluginfile.php/587647/course/section/62929/KKO-02.pdf
+    date: 2024-05-14
+  title: "Přehled základních kompresních technik"
