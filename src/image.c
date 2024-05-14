@@ -12,9 +12,9 @@
 
 enum direction {
     Direction_Right,
+    Direction_Down,
     Direction_Left,
     Direction_Up,
-    Direction_Down,
 };
 
 int coord_to_index(Image *image, int x, int y) {
@@ -110,10 +110,7 @@ Image image_get_block(Image *image, int block_index, int block_size) {
 
     block = image_new(width, height);
 
-    if (got_error()) {
-        image_free(&block);
-        return block;
-    }
+    if (got_error()) return block;
 
     for (int ny = 0; ny < height; ny++) {
         uint8_t *dst = block.data + (ny * width);
@@ -121,18 +118,23 @@ Image image_get_block(Image *image, int block_index, int block_size) {
         memcpy(dst, src, width);
     }
 
+    log("Getting block done");
+
     return block;
 }
 
 void image_insert_block(Image *image, Image *block, int block_index, int block_size) {
     int x, y;
     block_offset(image, block_index, block_size, &x, &y);
+    logfmt("Insert block %d with size %d into %dx%d", block_index, block_size, x, y);
 
     for (size_t ny = 0; ny < block->height; ny++) {
         uint8_t *dst = image->data + coord_to_index(image, x, y + ny);
         uint8_t *src = block->data + (ny * block->width);
         memcpy(dst, src, block->width);
     }
+
+    log("Insert block done");
 }
 
 uint8_t *image_serialization(Image *image, Serialization strategy) {
@@ -158,55 +160,49 @@ uint8_t *image_serialization(Image *image, Serialization strategy) {
         }
 
         case Serialization_Circular: {
-            /// It is going in the direction right -> down -> left -> up
-            /// After each transition, the step is -= 2
-            size_t right = image->width;
-            size_t down = image->height - 1;
-            size_t left = image->width - 1;
-            size_t up = image->height - 2;
-
-            enum direction direction = Direction_Right;
-            size_t *nof_step = &right;
-            size_t processed = 1;
-
-            /// first byte is always the same
-            bytes[0] = image->data[0];
-
-            long step = 1;
-            long index = -1;
-
-            while (processed < size) {
-                for (size_t i = 0; i < *nof_step; i++) {
-                    index += step;
-                    logfmt("%ld -> %ld\n", processed, index);
-                    bytes[processed++] = image->data[index];
-                }
-
-                *nof_step -= 2;
-
-                switch (direction) {
+            int width = image->width;
+            int top = 0, bottom = image->height - 1;
+            int left = 0, right = image->width - 1;
+            enum direction dir = Direction_Right; 
+            int index = 0;
+        
+            while (top <= bottom && left <= right) {
+                switch (dir) {
                     case Direction_Right:
-                        direction = Direction_Down;
-                        nof_step = &down;
-                        step = image->width;
-                        break;
-                    case Direction_Left:
-                        direction = Direction_Up;
-                        nof_step = &up;
-                        step = image->width;
-                        step = -step;
-                        break;
-                    case Direction_Up:
-                        direction = Direction_Right;
-                        nof_step = &right;
-                        step = 1;
+                        memcpy(bytes + index, image->data + top * width + left, right - left + 1);
+                        index += right - left + 1;
+                        top++;
+
+                        /// Naivee version of the above
+                        // for (int i = left; i <= right; i++) {
+                        //     bytes[index++] = image->data[top * width + i];
+                        // }
                         break;
                     case Direction_Down:
-                        direction = Direction_Left;
-                        nof_step = &left;
-                        step = -1;
+                        for (int i = top; i <= bottom; i++) {
+                            bytes[index++] = image->data[i * width + right];
+                        }
+
+                        right--;
+                        break;
+                    case Direction_Left:
+                        for (int i = right; i >= left; i--) {
+                            bytes[index++] = image->data[bottom * width + i];
+                        }
+
+                        bottom--;
+                        break;
+                    case Direction_Up:
+                        for (int i = bottom; i >= top; i--) {
+                            bytes[index++] = image->data[i * width + left];
+                        }
+
+                        left++;
                         break;
                 }
+
+                // 0: go right, 1: go down, 2: go left, 3: go up
+                dir = (dir + 1) % 4;
             }
 
             break;
@@ -238,54 +234,43 @@ Image image_deserialization(uint8_t *bytes, uint32_t width, uint32_t height, Ser
 
         /// This is the same as serialization, just swap the data storing part
         case Serialization_Circular: {
-            size_t right = image.width;
-            size_t down = image.height - 1;
-            size_t left = image.width - 1;
-            size_t up = image.height - 2;
-
-            enum direction direction = Direction_Right;
-            size_t *nof_step = &right;
-            size_t processed = 1;
-
-            image.data[0] = bytes[0];
-
-            long step = 1;
-            long index = -1;
-
-            while (processed < size) {
-                for (size_t i = 0; i < *nof_step; i++) {
-                    index += step;
-                    logfmt("%ld -> %ld\n", index, processed);
-                    image.data[index] = bytes[processed++];
-                }
-
-                *nof_step -= 2;
-
-                switch (direction) {
+            int top = 0, bottom = height - 1;
+            int left = 0, right = width - 1;
+            enum direction dir = Direction_Right; 
+            int index = 0;
+        
+            while (top <= bottom && left <= right) {
+                switch (dir) {
                     case Direction_Right:
-                        direction = Direction_Down;
-                        nof_step = &down;
-                        step = image.width;
+                        memcpy(image.data + top * width + left, bytes + index, right - left + 1);
+                        index += right - left + 1;
+                        top++;
                         break;
                     case Direction_Left:
-                        direction = Direction_Up;
-                        nof_step = &up;
-                        step = image.width;
-                        step = -step;
-                        break;
-                    case Direction_Up:
-                        direction = Direction_Right;
-                        nof_step = &right;
-                        step = 1;
+                        for (int i = right; i >= left; i--) {
+                            image.data[bottom * width + i] = bytes[index++];
+                        }
+
+                        bottom--;
                         break;
                     case Direction_Down:
-                        direction = Direction_Left;
-                        nof_step = &left;
-                        step = -1;
+                        for (int i = top; i <= bottom; i++) {
+                            image.data[i * width + right] = bytes[index++];
+                        }
+
+                        right--;
+                        break;
+                    case Direction_Up:
+                        for (int i = bottom; i >= top; i--) {
+                            image.data[i * width + left] = bytes[index++];
+                        }
+
+                        left++;
                         break;
                 }
+                dir = (dir + 1) % 4;
             }
-            // TODO
+
             break;
         }
     }

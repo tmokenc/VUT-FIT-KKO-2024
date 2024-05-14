@@ -90,6 +90,12 @@ void bit_array_push_n(BitArray *arr, uint64_t data, size_t n) {
         return;
     }
 
+    // while (n) {
+    //     bit_array_push(arr, data & 1);
+    //     data >>= 1;
+    //     n -= 1;
+    // }
+
     /// Allocate enough memory to store the new data
     size_t len = arr->len + n;
     size_t expected_bytes = len / 8 + (bool)(len % 8);
@@ -166,17 +172,6 @@ void bit_array_concat(BitArray *arr, BitArray *other) {
         bit_array_push_n(arr, val, nof_bits);
         len -= nof_bits;
     }
-
-    // Copy bit by bit
-    // This can be optimized
-    // for (size_t i = 0; i < other->len; i++) {
-    //     bool bit = bit_array_read(other);
-    //     bit_array_push(arr, bit);
-    // }
-
-
-
-
 }
 
 int bit_array_read(BitArray *arr) {

@@ -80,7 +80,7 @@ size_t rle_decode(uint8_t *bytes, size_t len, uint8_t *output, size_t output_len
     while (i < len) {
         uint8_t metadata = bytes[i++];
         logfmt("RLE decoding with metadata %d", metadata);
-for (int j = 0; j < 8 && i < len; j++) {
+        for (int j = 0; j < 8 && i < len; j++) {
             uint16_t repeat = 1; // 16bit number because it can be up to 257 times
 
             if (metadata & 1) {
@@ -101,7 +101,7 @@ for (int j = 0; j < 8 && i < len; j++) {
             }
 
             if (output_index >= output_len) {
-                return output_len;
+                return i;
             }
 
             metadata >>= 1;

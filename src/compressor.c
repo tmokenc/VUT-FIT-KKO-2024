@@ -20,14 +20,6 @@ typedef enum {
     CompressionType_Circular,
 } CompressionType;
 
-void print_bytes(const char *str, uint8_t *bytes, size_t size) {
-    printf("%s: ", str);
-    for (size_t i = 0; i < size; i++) {
-        printf("%02X ", bytes[i]);
-    }
-
-    printf("\n");
-}
 
 BitArray prehuffman_compress(uint8_t *bytes, size_t size, bool should_transform) {
     BitArray tmp = bit_array_new(bytes, size);
@@ -66,6 +58,8 @@ void compress_block(Image *block, bool should_transform, BitArray *output, BitAr
      CompressionType type = CompressionType_None;
      BitArray res;
      size_t min_val = image_size(block);
+
+     logbytes("Data", block->data, image_size(block));
 
      if (vertical_data.len < min_val) {
          min_val = vertical_data.len;
@@ -106,6 +100,8 @@ void compress_block(Image *block, bool should_transform, BitArray *output, BitAr
              break;
      }
 
+     logfmt("Compressed Type %d", type);
+     logbytes("Compressed data", res.data, bit_array_byte_len(&res));
      // -> write type
      bit_array_push_n(metadata, type, 2);
      bit_array_concat(output, &res);
@@ -160,6 +156,7 @@ Image compressor_image_decompress(uint8_t *bytes, size_t len, Args *args) {
     uint16_t width  = bit_array_read_n(&bits, 16);
     uint16_t height = bit_array_read_n(&bits, 16);
 
+    /// 4 bytes of width and height of the image
     uint8_t *data = bits.data + 4;
     size_t data_len = bit_array_byte_len(&bits) - 4;
     Image image = image_new(width, height);
@@ -178,31 +175,40 @@ Image compressor_image_decompress(uint8_t *bytes, size_t len, Args *args) {
             n -= 8;
         }
 
+        logbytes("Current data", data, data_len);
+
         for (int i = 0; i < nof_blocks; i++) {
             CompressionType type = bit_array_read_n(&block_metadata, 2);
             DECOMPRESS_ERROR_GUARD();
 
+            logfmt("Comrpessing block %d", i);
             Image block = image_get_block(&image, i, args->block_size);
             size_t block_size = image_size(&block);
             size_t len = block_size;
 
+            logbytes("Data", data, image_size(&block));
+
             switch (type) {
                 case CompressionType_None:
+                    log("Compressed none");
                     memcpy(block.data, data, block_size);
                     break;
                 case CompressionType_Horizontal:
+                    log("Compressed horizontal");
                     len = posthuffman_decompress(data, data_len, args->transformace_data, &block);
                     break;
                 case CompressionType_Vertical: {
+                    log("Compressed vertical");
                     len = posthuffman_decompress(data, data_len, args->transformace_data, &block);
-                    Image tmp = image_deserialization(data, block.width, block.height, Serialization_Vertical);
+                    Image tmp = image_deserialization(block.data, block.width, block.height, Serialization_Vertical);
                     image_free(&block);
                     block = tmp;
                     break;
                 }
                 case CompressionType_Circular:
+                    log("Compressed circular");
                     len = posthuffman_decompress(data, data_len, args->transformace_data, &block);
-                    Image tmp = image_deserialization(data, block.width, block.height, Serialization_Circular);
+                    Image tmp = image_deserialization(block.data, block.width, block.height, Serialization_Circular);
                     image_free(&block);
                     block = tmp;
                     break;
@@ -211,7 +217,11 @@ Image compressor_image_decompress(uint8_t *bytes, size_t len, Args *args) {
             data += len;
             data_len -= len;
 
+            logfmt("Decompressed Type %d", type);
+            logbytes("Decompressed data", block.data, image_size(&block));
+            logfmt("Type %d", type);
             image_insert_block(&image, &block, i, args->block_size);
+            log("Inserted block into the image");
         }
 
         bit_array_free(&block_metadata);

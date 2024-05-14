@@ -18,6 +18,7 @@ Args args_parse(int argc, char **argv) {
     args.image_adaptive = false;
     args.transformace_data = false;
     args.width = 0;
+    // args.block_size = 16; // Default to 16x16 per block
     args.block_size = 16; // Default to 16x16 per block
     args.mode = Mode_Compress; // Default mode is compress
 
@@ -67,9 +68,14 @@ Args args_parse(int argc, char **argv) {
         fprintf(stderr, "Error: Output file not specified.\n");
     }
 
-    if (!args.width) {
+    if (args.mode == Mode_Compress && !args.width) {
         set_error(Error_InvalidArgument);
         fprintf(stderr, "Error: Width of the image not specified.\n");
+    }
+
+    if (!args.block_size) {
+        set_error(Error_InvalidArgument);
+        fprintf(stderr, "Error: Invalid block size.\n");
     }
 
     return args;

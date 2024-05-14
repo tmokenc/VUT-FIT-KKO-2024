@@ -16,7 +16,7 @@ static void compressor_setup(void *arg) {
     ARGS.output_filename = NULL;
     ARGS.image_adaptive = false;
     ARGS.transformace_data = false;
-    ARGS.block_size = 16;
+    ARGS.block_size = 128;
 
     fill_random(_IMAGE.data, image_size(&_IMAGE));
     clear_error();

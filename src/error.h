@@ -20,10 +20,16 @@
  **/
 #define logfmt(s, ...) fprintf(stderr, "- "__FILE__":%u: "s"\n",__LINE__,__VA_ARGS__)
 
+#define logbytes(str, bytes, size) \
+    fprintf(stderr, "%s: ", str); \
+    for (size_t i = 0; i < size; i++) fprintf(stderr, "%02X ", bytes[i]); \
+    fprintf(stderr, "\n");
+
 #else
 
 #define log(s)
 #define logfmt(s, ...) 
+#define logbytes(str, bytes, size) 
 
 #endif
 

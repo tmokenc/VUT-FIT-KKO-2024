@@ -27,7 +27,7 @@ TEST rle_correctness() {
     size_t len = rle_decode(compressed.data, bit_array_byte_len(&compressed), tmp, RLE_DATA_SIZE);
 
     ASSERT_FALSE(got_error());
-    ASSERT_EQ(RLE_DATA_SIZE, len);
+    ASSERT_EQ(bit_array_byte_len(&compressed), len);
     ASSERT_MEM_EQ(RLE_DATA, tmp, RLE_DATA_SIZE);
 
     bit_array_free(&compressed);
