@@ -116,7 +116,7 @@ BitArray huffman_compress(uint8_t *bytes, size_t len) {
 }
 
 BitArray huffman_decompress(uint8_t *bytes, size_t len) {
-    #define DECOMPRESS_ERROR_GUARD(func, on_error) func; \
+    #define DECOMPRESS_ERROR_GUARD(on_error) \
         if ( got_error()) { \
             on_error; \
             bit_array_free(&input); \
@@ -129,11 +129,12 @@ BitArray huffman_decompress(uint8_t *bytes, size_t len) {
 
     log("Decoding symbol list");
     Symbols symbols;
-    DECOMPRESS_ERROR_GUARD(symbols_decode(&symbols, &input), );
+    symbols_decode(&symbols, &input);
+    DECOMPRESS_ERROR_GUARD();
 
     log("Building huffman tree");
     HuffmanNode *root = build_huffman_tree(&symbols);
-    DECOMPRESS_ERROR_GUARD(, );
+    DECOMPRESS_ERROR_GUARD();
 
     uint16_t byte;
 
@@ -146,7 +147,8 @@ BitArray huffman_decompress(uint8_t *bytes, size_t len) {
 
         logfmt("Decompressed 0x%02X", byte);
 
-        DECOMPRESS_ERROR_GUARD(bit_array_push_n(&result, byte, 8), huffman_node_free(root));
+        bit_array_push_n(&result, byte, 8);
+        DECOMPRESS_ERROR_GUARD(huffman_node_free(root));
         count += 1;
     }
 
@@ -406,8 +408,8 @@ HuffmanNode *huffman_node_new() {
 
 void huffman_node_free(HuffmanNode *node) {
     if (node) {
-        free(node->left);
-        free(node->right);
+        huffman_node_free(node->left);
+        huffman_node_free(node->right);
         free(node);
     }
 }

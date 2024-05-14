@@ -96,7 +96,7 @@ size_t rle_decode(uint8_t *bytes, size_t len, uint8_t *output, size_t output_len
             logfmt("RLE pushing %d %d times", byte, repeat);
 
             // Pushing bytes into the result
-            for (int k = 0; k < repeat; k++) {
+            for (int k = 0; k < repeat && output_index < output_len; k++) {
                 output[output_index++] = byte;
             }
 

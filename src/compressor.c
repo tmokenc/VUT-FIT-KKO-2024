@@ -29,7 +29,9 @@ BitArray prehuffman_compress(uint8_t *bytes, size_t size, bool should_transform)
         transform(tmp.data, size);
     }
 
-    return rle_encode(tmp.data, size);
+    BitArray result = rle_encode(tmp.data, size);
+    bit_array_free(&tmp);
+    return result;
 }
 
 size_t posthuffman_decompress(uint8_t *bytes, size_t size, bool should_transform, Image *output) {
@@ -160,6 +162,10 @@ Image compressor_image_decompress(uint8_t *bytes, size_t len, Args *args) {
     uint8_t *data = bits.data + 4;
     size_t data_len = bit_array_byte_len(&bits) - 4;
     Image image = image_new(width, height);
+    if (got_error()) {
+        bit_array_free(&bits);
+        return image;
+    }
     
     if (args->image_adaptive) {
         /// Reading block metadata
