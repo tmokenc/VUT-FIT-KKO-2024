@@ -33,8 +33,11 @@ test_debug: test/main.c $(TEST_DEBUG_OBJS)
 	$(CC) $(CFLAGS) -o $(BUILD_DIR)/test $^ && \
 	./$(BUILD_DIR)/test -v
 
-pack: 
-	zip -r xnguye27.zip src/ Makefile
+doc: doc/main.typ
+	typst c doc/main.typ documentation.pdf
+
+pack: doc
+	zip -r xnguye27.zip src/ test/ Makefile documentation.pdf
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(@D)
@@ -46,6 +49,6 @@ $(BUILD_DIR)/%-debug.o: $(SRC_DIR)/%.c
 
 -include $(DEPS)
 
-.PHONY: clean
+.PHONY: clean doc
 clean:
 	rm -rf $(BUILD_DIR) $(PROJ)
