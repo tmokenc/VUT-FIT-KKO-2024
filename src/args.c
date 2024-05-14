@@ -18,8 +18,7 @@ Args args_parse(int argc, char **argv) {
     args.image_adaptive = false;
     args.transformace_data = false;
     args.width = 0;
-    // args.block_size = 16; // Default to 16x16 per block
-    args.block_size = 16; // Default to 16x16 per block
+    args.block_size = 128; // Default to 128x128 per block
     args.mode = Mode_Compress; // Default mode is compress
 
     int opt;
