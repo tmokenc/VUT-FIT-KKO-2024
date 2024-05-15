@@ -113,8 +113,8 @@ void compress_block(Image *block, bool should_transform, BitArray *output, BitAr
 BitArray compressor_image_compress(Image *image, Args *args) {
     BitArray result = bit_array_new(NULL, 0);
 
-    bit_array_push_n(&result, (unsigned)image->width, 16);
-    bit_array_push_n(&result, (unsigned)image->height, 16);
+    bit_array_push_n(&result, (unsigned)image->width - 1, 16);
+    bit_array_push_n(&result, (unsigned)image->height - 1, 16);
 
     if (args->image_adaptive) {
         BitArray blocks_metadata = bit_array_new(NULL, 0);
@@ -155,8 +155,8 @@ Image compressor_image_decompress(uint8_t *bytes, size_t len, Args *args) {
 
     BitArray bits = huffman_decompress(bytes, len);
 
-    uint16_t width  = bit_array_read_n(&bits, 16);
-    uint16_t height = bit_array_read_n(&bits, 16);
+    uint16_t width  = bit_array_read_n(&bits, 16) + 1;
+    uint16_t height = bit_array_read_n(&bits, 16) + 1;
 
     /// 4 bytes of width and height of the image
     uint8_t *data = bits.data + 4;
